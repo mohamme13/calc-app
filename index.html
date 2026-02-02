@@ -1,0 +1,110 @@
+Enter<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حساب المعدل - الإمبراطورية</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { background: #0088cc; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .key { background: #eee; padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .key.confirm { background: #4caf50; color: white; grid-column: span 3; }
+    </style>
+</head>
+<body>
+
+<div class="card" id="app">
+    <div id="setup-step">
+        <h3>مرحباً بك في الحاسبة الشاملة 🎓</h3>
+        <p>كم عدد المواد التي تدرسها؟</p>
+        <input type="number" id="sub-count" placeholder="مثلاً: 5">
+        <button class="btn" onclick="startSetup()">ابدأ الإعداد</button>
+    </div>
+</div>
+
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand(); // لفتح التطبيق بكامل الشاشة
+
+    let config = { subjects: [], currentIdx: 0, total: 0 };
+
+    function startSetup() {
+        let count = document.getElementById('sub-count').value;
+        if(!count || count <= 0) return alert("أدخل رقماً صحيحاً");
+        config.total = parseInt(count);
+        showSubjectStep();
+    }
+
+    function showSubjectStep() {
+        document.getElementById('app').innerHTML = `
+            <h3>إعداد المادة ${config.currentIdx + 1}</h3>
+            <input type="text" id="sub-name" placeholder="اسم المادة">
+            <input type="number" id="sub-coeff" placeholder="المعامل">
+            <button class="btn" onclick="saveSubject()">التالي</button>
+        `;
+    }
+
+    function saveSubject() {
+        let name = document.getElementById('sub-name').value;
+        let coeff = parseFloat(document.getElementById('sub-coeff').value);
+        if(!name || !coeff) return alert("أكمل البيانات");
+
+        config.subjects.push({ name, coeff, grades: {} });
+        config.currentIdx++;
+
+        if(config.currentIdx < config.total) {
+            showSubjectStep();
+        } else {
+            config.currentIdx = 0;
+            startGrading();
+        }
+    }
+
+    function startGrading() {
+        let sub = config.subjects[config.currentIdx];
+        document.getElementById('app').innerHTML = `
+            <h3>إدخال نقاط: ${sub.name}</h3>
+            <p>أدخل علامة الاختبار (EX):</p>
+            <input type="number" id="grade-val" step="0.01" max="20">
+            <button class="btn" onclick="saveGrade()">تأكيد الدرجة</button>
+        `;
+    }
+
+    function saveGrade() {
+        let val = parseFloat(document.getElementById('grade-val').value);
+        if(isNaN(val) || val > 20) return alert("درجة غير صحيحة");
+
+        config.subjects[config.currentIdx].grade = val;
+        config.currentIdx++;
+
+        if(config.currentIdx < config.total) {
+            startGrading();
+        } else {
+            calculateFinal();
+        }
+    }
+
+    function calculateFinal() {
+        let totalWeighted = 0;
+        let totalCoeffs = 0;
+        let html = "<h3>📊 النتائج النهائية:</h3><ul>";
+
+        config.subjects.forEach(sub => {
+            totalWeighted += (sub.grade * sub.coeff);
+            totalCoeffs += sub.coeff;
+            html += `<li>${sub.name}: ${sub.grade} (معامل ${sub.coeff})</li>`;
+        });
+
+        let gpa = totalWeighted / totalCoeffs;
+        html += `</ul><hr><h4>المعدل العام: ${gpa.toFixed(2)}</h4>`;
+        html += `<button class="btn" onclick="location.reload()">إعادة الحساب</button>`;
+        
+        document.getElementById('app').innerHTML = html;
+    }
+</script>
+</body>
+</html>
