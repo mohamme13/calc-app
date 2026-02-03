@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>حاسبة المعدل الأكاديمية</title>
+    <title>حاسبة المعدل السريعة</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -16,30 +16,30 @@
         input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; outline: none; }
         .btn { background: var(--main-color); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; margin-top: 10px; }
         .btn-pdf { background: var(--accent-color); margin-top: 20px; }
-        .sub-card { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #fdfdfd; }
+        .sub-card { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #fdfdfd; position: relative; }
         .hidden { display: none !important; }
         
         #loading-screen, #subscription-overlay { position: fixed; top:0; left:0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 25px; box-sizing: border-box; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--main-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--main-color); border-radius: 50%; width: 35px; height: 35px; animation: spin 0.8s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         .result-table th, .result-table td { border: 1px solid #eee; padding: 12px; text-align: center; }
-        .badge-type { font-size: 10px; background: #eee; padding: 2px 5px; border-radius: 4px; vertical-align: middle; }
+        .badge-type { font-size: 10px; background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; position: absolute; left: 10px; top: 10px; }
     </style>
 </head>
 <body>
 
-<div id="loading-screen">
+<div id="loading-screen" class="hidden">
     <div class="loader"></div>
-    <p>جارٍ التحقق من الاشتراك...</p>
+    <p>جارٍ التحميل...</p>
 </div>
 
 <div id="subscription-overlay" class="hidden">
     <h2 style="color: var(--error-color);">⚠️ انضمام إلزامي</h2>
-    <p>لاستخدام الحاسبة، يجب عليك الاشتراك في القناة أولاً.</p>
+    <p>لاستخدام الحاسبة وحفظ بياناتك، يجب الانضمام لقناة المطور.</p>
     <button class="btn" onclick="window.open('https://t.me/moh1101off', '_blank')">اضغط للاشتراك @moh1101off</button>
-    <button class="btn" style="background:#333;" onclick="checkSubscription()">تحقق الآن ✅</button>
+    <button class="btn" style="background:#333;" onclick="checkSubscription(true)">لقد اشتركت ✅</button>
 </div>
 
 <div class="container hidden" id="main-app">
@@ -47,10 +47,10 @@
         <h2>إعداد التخصص</h2>
         <div class="input-group">
             <label>اسم التخصص:</label>
-            <input type="text" id="specialization-name" placeholder="مثلاً: هندسة معمارية">
+            <input type="text" id="specialization-name" placeholder="مثلاً: هندسة">
         </div>
         <div class="input-group">
-            <label>عدد االمواد</label>
+            <label>عدد المواد:</label>
             <input type="number" id="total-subs">
         </div>
         <button class="btn" onclick="initSetup()">ابدأ الإعداد</button>
@@ -98,35 +98,58 @@
             <h3 style="text-align:center; color: var(--accent-color); margin-top:20px;" id="final-avg-display"></h3>
         </div>
         <button class="btn btn-pdf" onclick="downloadPDF()">تحميل PDF 📥</button>
-        <button class="btn" style="background:#95a5a6;" onclick="location.reload()">إعادة الحساب</button>
+        <button class="btn" style="background:#95a5a6;" onclick="backToGrading()">تعديل الدرجات</button>
     </div>
 </div>
 
 <script>
     let tg = window.Telegram.WebApp;
     const WORKER_URL = "https://check-sub.nbvcxnbvcx41.workers.dev";
+    const CACHE_KEY = "sub_verified_status";
+    const CACHE_TIME = 2 * 60 * 60 * 1000; // ساعتين (بالملي ثانية)
+
     let appData = { specName: "", total: 0, current: 0, subjects: [] };
 
     window.onload = checkSubscription;
 
-    async function checkSubscription() {
+    async function checkSubscription(force = false) {
         const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
         if (!userId) return document.body.innerHTML = "<h3>افتح من تليجرام</h3>";
-        
+
+        // التحقق من الذاكرة المؤقتة أولاً لتسريع الفتح
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (!force && cached) {
+            const cacheData = JSON.parse(cached);
+            if (Date.now() - cacheData.timestamp < CACHE_TIME) {
+                startApp();
+                return;
+            }
+        }
+
         document.getElementById('loading-screen').classList.remove('hidden');
         try {
             const res = await fetch(`${WORKER_URL}?userId=${userId}`);
             const data = await res.json();
             document.getElementById('loading-screen').classList.add('hidden');
-            if (data.isMember) startApp();
-            else document.getElementById('subscription-overlay').classList.remove('hidden');
-        } catch (e) { alert("خطأ في الاتصال"); }
+            
+            if (data.isMember) {
+                // حفظ حالة التحقق في الذاكرة لتسريع المرة القادمة
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now() }));
+                startApp();
+            } else {
+                document.getElementById('subscription-overlay').classList.remove('hidden');
+            }
+        } catch (e) { 
+            document.getElementById('loading-screen').classList.add('hidden');
+            alert("خطأ في الاتصال، حاول لاحقاً."); 
+        }
     }
 
     function startApp() {
+        document.getElementById('subscription-overlay').classList.add('hidden');
         const saved = localStorage.getItem('saved_calc_config');
         if (saved) { appData = JSON.parse(saved); renderGrading(); }
-        else document.getElementById('main-app').classList.remove('hidden');
+        else { document.getElementById('main-app').classList.remove('hidden'); }
     }
 
     function toggleRatio() {
@@ -152,18 +175,11 @@
         const coeff = parseFloat(document.getElementById('sub-coeff').value);
         const type = document.getElementById('sub-type').value;
         const ratio = parseFloat(document.getElementById('sub-ratio').value);
-
         if(!name || isNaN(coeff)) return alert("أكمل البيانات");
         appData.subjects.push({ name, coeff, type, ratio });
         appData.current++;
-
-        if(appData.current < appData.total) {
-            document.getElementById('sub-name').value = "";
-            updateTitle();
-        } else {
-            localStorage.setItem('saved_calc_config', JSON.stringify(appData));
-            renderGrading();
-        }
+        if(appData.current < appData.total) { document.getElementById('sub-name').value = ""; updateTitle(); }
+        else { localStorage.setItem('saved_calc_config', JSON.stringify(appData)); renderGrading(); }
     }
 
     function renderGrading() {
@@ -171,22 +187,14 @@
         document.getElementById('step-1').classList.add('hidden');
         document.getElementById('step-2').classList.add('hidden');
         document.getElementById('step-4').classList.add('hidden');
-        const area = document.getElementById('grading-area');
-        area.innerHTML = "";
+        const area = document.getElementById('grading-area'); area.innerHTML = "";
         document.getElementById('grading-title').innerText = appData.specName;
-
         appData.subjects.forEach((sub, i) => {
-            let html = `<div class="sub-card"><strong>${sub.name}</strong> <span class="badge-type">${sub.type.toUpperCase()}</span><br><br>`;
-            html += `<label>علامة الامتحان (EX):</label><input type="number" class="grade-ex" data-idx="${i}" step="0.01">`;
-            
-            if(sub.type === 'both' || sub.type === 'all') {
-                html += `<label style="margin-top:8px;">علامة الأعمال الموجهة (TD):</label><input type="number" class="grade-td" data-idx="${i}" step="0.01">`;
-            }
-            if(sub.type === 'all') {
-                html += `<label style="margin-top:8px;">علامة الأعمال التطبيقية (TP):</label><input type="number" class="grade-tp" data-idx="${i}" step="0.01">`;
-            }
-            html += `</div>`;
-            area.innerHTML += html;
+            let html = `<div class="sub-card"><span class="badge-type">${sub.type.toUpperCase()}</span><strong>${sub.name} (معامل ${sub.coeff})</strong><br><br>`;
+            html += `<label>علامة EX:</label><input type="number" class="grade-ex" data-idx="${i}" step="0.01">`;
+            if(sub.type === 'both' || sub.type === 'all') html += `<label style="margin-top:8px;">علامة TD:</label><input type="number" class="grade-td" data-idx="${i}" step="0.01">`;
+            if(sub.type === 'all') html += `<label style="margin-top:8px;">علامة TP:</label><input type="number" class="grade-tp" data-idx="${i}" step="0.01">`;
+            html += `</div>`; area.innerHTML += html;
         });
         document.getElementById('step-3').classList.remove('hidden');
     }
@@ -194,40 +202,25 @@
     function calculateFinal() {
         const exInputs = document.querySelectorAll('.grade-ex');
         let totalW = 0, totalC = 0, tableH = "";
-
         for(let i=0; i < appData.subjects.length; i++) {
-            let sub = appData.subjects[i];
-            let exV = parseFloat(exInputs[i].value) || 0;
-            let avg = 0;
-
-            if(sub.type === 'ex') {
-                avg = exV;
-            } else if(sub.type === 'both') {
-                let tdV = parseFloat(document.querySelector(`.grade-td[data-idx="${i}"]`).value) || 0;
-                avg = (exV * sub.ratio) + (tdV * (1 - sub.ratio));
-            } else if(sub.type === 'all') {
-                let tdV = parseFloat(document.querySelector(`.grade-td[data-idx="${i}"]`).value) || 0;
-                let tpV = parseFloat(document.querySelector(`.grade-tp[data-idx="${i}"]`).value) || 0;
-                let combinedTDTP = (tdV + tpV) / 2; // دمج TP مع TD وقسمتها على 2 كما طلبت
-                avg = (exV * sub.ratio) + (combinedTDTP * (1 - sub.ratio));
+            let sub = appData.subjects[i], exV = parseFloat(exInputs[i].value) || 0, avg = 0;
+            if(sub.type === 'ex') avg = exV;
+            else if(sub.type === 'both') avg = (exV * sub.ratio) + ((parseFloat(document.querySelector(`.grade-td[data-idx="${i}"]`).value) || 0) * (1 - sub.ratio));
+            else if(sub.type === 'all') {
+                let combo = ((parseFloat(document.querySelector(`.grade-td[data-idx="${i}"]`).value) || 0) + (parseFloat(document.querySelector(`.grade-tp[data-idx="${i}"]`).value) || 0)) / 2;
+                avg = (exV * sub.ratio) + (combo * (1 - sub.ratio));
             }
-
             totalW += (avg * sub.coeff); totalC += sub.coeff;
             tableH += `<tr><td>${sub.name}</td><td>${avg.toFixed(2)}</td><td>${sub.coeff}</td></tr>`;
         }
-
-        document.getElementById('pdf-spec-name').innerText = appData.specName;
         document.getElementById('result-body').innerHTML = tableH;
         document.getElementById('final-avg-display').innerText = `المعدل العام: ${(totalW / totalC).toFixed(2)}`;
-        document.getElementById('step-3').classList.add('hidden');
-        document.getElementById('step-4').classList.remove('hidden');
+        document.getElementById('step-3').classList.add('hidden'); document.getElementById('step-4').classList.remove('hidden');
     }
 
-    function downloadPDF() {
-        html2pdf().from(document.getElementById('pdf-content')).set({ margin: 10, filename: 'كشف_نقاط.pdf', html2canvas: { scale: 2 } }).save();
-    }
-
-    function resetApp() { if(confirm("حذف التخصص؟")) { localStorage.removeItem('saved_calc_config'); location.reload(); } }
+    function downloadPDF() { html2pdf().from(document.getElementById('pdf-content')).set({ margin: 10, filename: 'Result.pdf' }).save(); }
+    function backToGrading() { document.getElementById('step-4').classList.add('hidden'); document.getElementById('step-3').classList.remove('hidden'); }
+    function resetApp() { if(confirm("حذف التخصص؟")) { localStorage.removeItem('saved_calc_config'); localStorage.removeItem(CACHE_KEY); location.reload(); } }
 </script>
 </body>
-            </html>
+    </html>
