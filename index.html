@@ -66,10 +66,7 @@
             font-family: 'Cairo';
             font-size: 16px;
             box-sizing: border-box;
-            transition: border 0.3s;
         }
-
-        input:focus { border-color: var(--primary); outline: none; }
 
         .btn {
             background: linear-gradient(135deg, var(--primary), var(--primary-light));
@@ -82,7 +79,7 @@
             font-size: 17px;
             font-weight: bold;
             margin-top: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -90,7 +87,7 @@
         }
 
         .btn:active { transform: scale(0.96); }
-        .btn:hover { box-shadow: 0 5px 15px rgba(36, 129, 204, 0.4); }
+        .btn-share { background: linear-gradient(135deg, #00c6ff, #0072ff); margin-top: 10px; }
 
         .sub-card {
             background: rgba(255,255,255,0.03);
@@ -99,10 +96,7 @@
             border-radius: 15px;
             margin-bottom: 18px;
             position: relative;
-            animation: slideUp 0.4s ease;
         }
-
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         .badge-type {
             font-size: 10px;
@@ -110,39 +104,29 @@
             color: white;
             padding: 3px 8px;
             border-radius: 6px;
-            position: absolute;
-            left: 15px;
-            top: 15px;
+            position: absolute; left: 15px; top: 15px;
         }
 
         .hidden { display: none !important; }
-
-        #subscription-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); z-index: 10000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; padding: 30px; box-sizing: border-box;
-        }
 
         .result-circle {
             width: 120px; height: 120px;
             border: 6px solid var(--primary);
             border-radius: 50%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin: 20px auto;
-            font-weight: bold;
+            margin: 20px auto; font-weight: bold;
         }
 
-        .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-        .result-table th, .result-table td { padding: 12px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .result-table td { padding: 12px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
 <div id="subscription-overlay" class="hidden">
     <i class="fas fa-paper-plane" style="font-size: 50px; color: var(--primary); margin-bottom: 20px;"></i>
-    <h2>أهلاً بك معنا!</h2>
-    <p>للحصول على أفضل تجربة وحفظ تخصصاتك، انضم لقناتنا الرسمية.</p>
+    <h2>أهلاً بك!</h2>
+    <p>للحصول على تجربة كاملة وحفظ بياناتك، انضم لقناتنا الرسمية.</p>
     <button class="btn" onclick="window.open('https://t.me/moh1101off', '_blank')">
         <i class="fab fa-telegram"></i> انضم للقناة @moh1101off
     </button>
@@ -154,11 +138,11 @@
         <h2><i class="fas fa-graduation-cap"></i> إعداد التخصص</h2>
         <div class="input-group">
             <label>اسم التخصص:</label>
-            <input type="text" id="specialization-name" placeholder="مثلاً: هندسة برمجيات">
+            <input type="text" id="specialization-name" placeholder="مثلاً: علوم المادة">
         </div>
         <div class="input-group">
             <label>عدد المواد:</label>
-            <input type="number" id="total-subs" placeholder="أدخل الرقم">
+            <input type="number" id="total-subs">
         </div>
         <button class="btn" onclick="initSetup()">متابعة <i class="fas fa-arrow-left"></i></button>
     </div>
@@ -197,16 +181,18 @@
 
     <div id="step-4" class="hidden">
         <h2><i class="fas fa-chart-line"></i> النتيجة النهائية</h2>
-        <div id="result-display">
-            <div class="result-circle">
-                <span id="final-avg-val" style="font-size: 24px;">0.00</span>
-                <span style="font-size: 12px;">المعدل العام</span>
-            </div>
-            <table class="result-table">
-                <thead><tr><th>المادة</th><th>المعدل</th><th>المعامل</th></tr></thead>
-                <tbody id="result-body"></tbody>
-            </table>
+        <div class="result-circle">
+            <span id="final-avg-val" style="font-size: 24px;">0.00</span>
+            <span style="font-size: 12px;">المعدل العام</span>
         </div>
+        <table class="result-table">
+            <tbody id="result-body"></tbody>
+        </table>
+        
+        <button class="btn btn-share" onclick="shareResult()">
+            <i class="fas fa-share-alt"></i> مشاركة النتيجة مع الأصدقاء
+        </button>
+        
         <button class="btn" style="background:#95a5a6;" onclick="backToGrading()">تعديل الدرجات <i class="fas fa-edit"></i></button>
         <button class="btn" onclick="location.reload()">بداية جديدة <i class="fas fa-redo"></i></button>
     </div>
@@ -215,7 +201,7 @@
 <script>
     let tg = window.Telegram.WebApp;
     tg.expand();
-    let appData = { specName: "", total: 0, current: 0, subjects: [] };
+    let appData = { specName: "", total: 0, current: 0, subjects: [], finalResult: "" };
 
     window.onload = function() {
         if (!localStorage.getItem('has_visited_before')) {
@@ -275,7 +261,7 @@
         const area = document.getElementById('grading-area'); area.innerHTML = "";
         document.getElementById('grading-title').innerText = appData.specName;
         appData.subjects.forEach((sub, i) => {
-            let html = `<div class="sub-card"><span class="badge-type">${sub.type.toUpperCase()}</span><strong>${sub.name} (معامل ${sub.coeff})</strong><br><br>`;
+            let html = `<div class="sub-card"><span class="badge-type">${sub.type.toUpperCase()}</span><strong>${sub.name}</strong><br><br>`;
             html += `<label>علامة EX:</label><input type="number" class="grade-ex" data-idx="${i}" step="0.01">`;
             if(sub.type === 'both' || sub.type === 'all') html += `<label style="margin-top:8px;">علامة TD:</label><input type="number" class="grade-td" data-idx="${i}" step="0.01">`;
             if(sub.type === 'all') html += `<label style="margin-top:8px;">علامة TP:</label><input type="number" class="grade-tp" data-idx="${i}" step="0.01">`;
@@ -286,7 +272,8 @@
 
     function calculateFinal() {
         const exInputs = document.querySelectorAll('.grade-ex');
-        let totalW = 0, totalC = 0, tableH = "";
+        let totalW = 0, totalC = 0, tableH = "", shareText = `📊 **كشف نقاطي في ${appData.specName}:**\n━━━━━━━━━━━━━━\n`;
+
         for(let i=0; i < appData.subjects.length; i++) {
             let sub = appData.subjects[i], exV = parseFloat(exInputs[i].value) || 0, avg = 0;
             if(sub.type === 'ex') avg = exV;
@@ -297,14 +284,25 @@
             }
             totalW += (avg * sub.coeff); totalC += sub.coeff;
             tableH += `<tr><td>${sub.name}</td><td>${avg.toFixed(2)}</td><td>${sub.coeff}</td></tr>`;
+            shareText += `🔹 ${sub.name}: ${avg.toFixed(2)}\n`;
         }
+
+        const finalResult = (totalW / totalC).toFixed(2);
+        shareText += `━━━━━━━━━━━━━━\n✅ **المعدل العام النهائي: ${finalResult}**\n\nحُسب بواسطة بوت @moh1101off`;
+        appData.shareText = shareText;
+
         document.getElementById('result-body').innerHTML = tableH;
-        document.getElementById('final-avg-val').innerText = (totalW / totalC).toFixed(2);
+        document.getElementById('final-avg-val').innerText = finalResult;
         document.getElementById('step-3').classList.add('hidden'); document.getElementById('step-4').classList.remove('hidden');
+    }
+
+    function shareResult() {
+        const url = `https://t.me/share/url?url=&text=${encodeURIComponent(appData.shareText)}`;
+        tg.openTelegramLink(url);
     }
 
     function backToGrading() { document.getElementById('step-4').classList.add('hidden'); document.getElementById('step-3').classList.remove('hidden'); }
     function resetApp() { if(confirm("حذف التخصص؟")) { localStorage.removeItem('saved_calc_config'); location.reload(); } }
 </script>
 </body>
-                                                             </html>
+                </html>
