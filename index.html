@@ -1,226 +1,257 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>حاسبة المعدل السريعة</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        :root { --main-color: #2481cc; --bg-color: #f4f7f9; --accent-color: #27ae60; --error-color: #e74c3c; }
-        body { font-family: 'Arial', sans-serif; background-color: var(--bg-color); margin: 0; padding: 15px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        h2 { color: var(--main-color); text-align: center; margin-top: 0; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 14px; color: #444; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; outline: none; }
-        .btn { background: var(--main-color); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; margin-top: 10px; }
-        .btn-pdf { background: var(--accent-color); margin-top: 20px; }
-        .sub-card { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #fdfdfd; position: relative; }
-        .hidden { display: none !important; }
-        
-        #loading-screen, #subscription-overlay { position: fixed; top:0; left:0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 25px; box-sizing: border-box; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--main-color); border-radius: 50%; width: 35px; height: 35px; animation: spin 0.8s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .result-table th, .result-table td { border: 1px solid #eee; padding: 12px; text-align: center; }
-        .badge-type { font-size: 10px; background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; position: absolute; left: 10px; top: 10px; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>حاسبة المعدل — سريع ومحسّن</title>
+  <style>
+    :root{--main:#2481cc;--bg:#f6f8fb;--accent:#27ae60;--err:#e74c3c}
+    body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);margin:0;padding:16px;display:flex;justify-content:center}
+    .card{width:100%;max-width:640px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    h1{margin:0 0 12px;color:var(--main);text-align:center}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    label{font-weight:600;margin-bottom:6px;display:block}
+    input,select,button{font-size:15px;padding:10px;border-radius:8px;border:1px solid #dcdcdc;outline:none;background:#fff}
+    input[type=number]{width:120px}
+    .btn{background:var(--main);color:#fff;border:none;cursor:pointer}
+    .btn.secondary{background:#7f8c8d}
+    .hidden{display:none!important}
+    .sub-list{margin-top:14px;display:grid;gap:12px}
+    .sub-card{padding:12px;border:1px solid #eef0f4;border-radius:10px;position:relative;background:#fcfeff}
+    .badge{position:absolute;left:12px;top:10px;background:#eaf5ff;color:var(--main);padding:4px 8px;border-radius:6px;font-size:12px}
+    small{color:#666}
+    #result{margin-top:16px;text-align:center;font-weight:700;color:var(--accent)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .file{display:inline-block}
+    .loader{width:28px;height:28px;border-radius:50%;border:3px solid #eee;border-top-color:var(--main);animation:rot 1s linear infinite;display:inline-block}
+    @keyframes rot{to{transform:rotate(360deg)}}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid #eef0f4;padding:8px;text-align:center}
+    .small{font-size:13px;color:#555}
+  </style>
 </head>
 <body>
+  <div class="card" id="app">
+    <h1>حاسبة المعدل السريعة</h1>
 
-<div id="loading-screen" class="hidden">
-    <div class="loader"></div>
-    <p>جارٍ التحميل...</p>
-</div>
-
-<div id="subscription-overlay" class="hidden">
-    <h2 style="color: var(--error-color);">⚠️ انضمام إلزامي</h2>
-    <p>لاستخدام الحاسبة وحفظ بياناتك، يجب الانضمام لقناة المطور.</p>
-    <button class="btn" onclick="window.open('https://t.me/moh1101off', '_blank')">اضغط للاشتراك @moh1101off</button>
-    <button class="btn" style="background:#333;" onclick="checkSubscription(true)">لقد اشتركت ✅</button>
-</div>
-
-<div class="container hidden" id="main-app">
-    <div id="step-1">
-        <h2>إعداد التخصص</h2>
-        <div class="input-group">
-            <label>اسم التخصص:</label>
-            <input type="text" id="specialization-name" placeholder="مثلاً: هندسة">
-        </div>
-        <div class="input-group">
-            <label>عدد المواد:</label>
-            <input type="number" id="total-subs">
-        </div>
-        <button class="btn" onclick="initSetup()">ابدأ الإعداد</button>
+    <div id="overlay-check" style="text-align:center;margin-bottom:12px">
+      <div class="loader" id="loader"></div>
+      <div class="small" style="margin-top:8px">جارٍ التحقق من الاشتراك...</div>
+      <div class="small" id="check-msg" style="margin-top:8px;color:#b04">إذا استمر التحميل طويلاً، اضغط تحقق مرة أخرى</div>
+      <div style="margin-top:8px">
+        <button class="btn secondary" id="retry-btn">تحقق مجدداً</button>
+      </div>
     </div>
 
-    <div id="step-2" class="hidden">
-        <h2 id="current-sub-title">المادة</h2>
-        <div class="input-group">
-            <label>اسم المادة:</label>
-            <input type="text" id="sub-name">
+    <div id="main-ui" class="hidden">
+      <div class="row" style="align-items:end">
+        <div style="flex:1">
+          <label>اسم التخصص</label>
+          <input id="spec-name" placeholder="مثلاً: هندسة" />
         </div>
-        <div class="input-group">
-            <label>المعامل:</label>
-            <input type="number" id="sub-coeff" value="1">
+        <div>
+          <label>عدد المواد</label>
+          <input id="total-sub" type="number" min="1" step="1" value="6" />
         </div>
-        <div class="input-group">
-            <label>طريقة الحساب:</label>
-            <select id="sub-type" onchange="toggleRatio()">
-                <option value="ex">إمتحان فقط (EX)</option>
-                <option value="both">إمتحان + أعمال موجهة (EX+TD)</option>
-                <option value="all">إمتحان + موجهة + تطبيقية (EX+TD+TP)</option>
-            </select>
+        <div style="min-width:120px">
+          <label>&nbsp;</label>
+          <button id="start-btn" class="btn">ابدأ</button>
         </div>
-        <div id="ratio-div" class="hidden">
-            <label>نسبة الإمتحان (مثلاً 0.6):</label>
-            <input type="number" id="sub-ratio" value="0.6" step="0.1">
-        </div>
-        <button class="btn" onclick="saveSubject()">المادة التالية</button>
-    </div>
+      </div>
 
-    <div id="step-3" class="hidden">
-        <h2 id="grading-title">رصد الدرجات</h2>
-        <div id="grading-area"></div>
-        <button class="btn" onclick="calculateFinal()">حساب النتائج</button>
-        <button class="btn" style="background:#7f8c8d; font-size:12px;" onclick="resetApp()">تغيير التخصص ⚙️</button>
-    </div>
-
-    <div id="step-4" class="hidden">
-        <div id="pdf-content">
-            <h2 id="pdf-spec-name">كشف النقاط</h2>
-            <table class="result-table">
-                <thead><tr><th>المادة</th><th>المعدل</th><th>المعامل</th></tr></thead>
-                <tbody id="result-body"></tbody>
-            </table>
-            <h3 style="text-align:center; color: var(--accent-color); margin-top:20px;" id="final-avg-display"></h3>
+      <div id="setup-area" class="hidden" style="margin-top:12px">
+        <div class="small">اضف/حرر المواد ثم اضغط "توليد واجهة الدرجات"</div>
+        <div style="margin-top:10px" class="row">
+          <input id="sub-name" placeholder="اسم المادة" style="flex:1" />
+          <input id="sub-coeff" type="number" value="1" min="0.25" step="0.25" style="width:120px" />
+          <select id="sub-type" style="width:200px">
+            <option value="ex">امتحان (EX)</option>
+            <option value="both">EX + أعمال موجهة</option>
+            <option value="all">EX + TD + TP</option>
+          </select>
+          <button id="add-sub" class="btn">أضف</button>
         </div>
-        <button class="btn btn-pdf" onclick="downloadPDF()">تحميل PDF 📥</button>
-        <button class="btn" style="background:#95a5a6;" onclick="backToGrading()">تعديل الدرجات</button>
+
+        <div class="controls" style="margin-top:10px">
+          <button id="gen-grading" class="btn">توليد واجهة الدرجات</button>
+          <button id="import-csv" class="btn secondary">استيراد CSV</button>
+          <input id="file-input" type="file" accept=".csv" class="file hidden" />
+          <button id="clear-config" class="btn secondary">مسح التخزين</button>
+        </div>
+
+        <div class="sub-list" id="sub-list"></div>
+      </div>
+
+      <div id="grading-area" class="hidden">
+        <h3 class="small" id="spec-title">التخصص</h3>
+        <div id="grades-container"></div>
+
+        <div class="controls" style="margin-top:12px">
+          <button id="calc-btn" class="btn">حساب المعدل</button>
+          <button id="export-csv" class="btn secondary">تصدير CSV</button>
+          <button id="download-pdf" class="btn">تنزيل PDF</button>
+        </div>
+
+        <div id="result" class="hidden"></div>
+
+        <div id="table-result" class="hidden"></div>
+      </div>
     </div>
-</div>
+  </div>
+
+  <!-- template for subject (cloning faster than string concat) -->
+  <template id="sub-template">
+    <div class="sub-card">
+      <span class="badge"></span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1">
+          <div class="small name"></div>
+        </div>
+        <div style="width:110px;text-align:center"><small>معامل</small><div class="coeff"></div></div>
+        <div style="width:140px;text-align:center"><small>نوع</small><div class="type"></div></div>
+        <div style="width:80px;text-align:center">
+          <button class="btn secondary remove-sub">حذف</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- template for grade row -->
+  <template id="grade-row-template">
+    <div class="sub-card grade-row">
+      <span class="badge type-badge"></span>
+      <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center">
+        <div><strong class="g-name"></strong><div class="small">المعامل: <span class="g-coeff"></span></div></div>
+        <div class="inputs" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div style="text-align:center"><div class="small">المعدل</div><div class="g-avg">0.00</div></div>
+      </div>
+    </div>
+  </template>
 
 <script>
-    let tg = window.Telegram.WebApp;
-    const WORKER_URL = "https://check-sub.nbvcxnbvcx41.workers.dev";
-    const CACHE_KEY = "sub_verified_status";
-    const CACHE_TIME = 2 * 60 * 60 * 1000; // ساعتين (بالملي ثانية)
+/* ======= إعدادات وأداء ======= */
+const WORKER_SCRIPT = 'sub-check-worker.js'; // ملف العامل (Web Worker)
+const SUB_KEY = 'fast_gpa_config_v1';
+let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+let worker;
+let app = {
+  specName: '',
+  subjects: []
+};
 
-    let appData = { specName: "", total: 0, current: 0, subjects: [] };
+/* ======= فحص الاشتراك عبر Web Worker ======= */
+function startWorkerCheck() {
+  try {
+    worker = new Worker(WORKER_SCRIPT);
+    const userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
+    worker.postMessage({ cmd: 'check', userId });
+    worker.onmessage = e => {
+      const d = e.data;
+      if (d.ok) {
+        document.getElementById('overlay-check').classList.add('hidden');
+        document.getElementById('main-ui').classList.remove('hidden');
+        loadSaved();
+        // préparer UI
+      } else {
+        document.getElementById('check-msg').innerText = 'يرجى الاشتراك في القناة لاستخدام التطبيق';
+        // نعرض زر الاشتراك (يمكن فتح رابط)
+        document.getElementById('overlay-check').querySelector('#retry-btn').innerText = 'اشترك ثم تحقق';
+        document.getElementById('retry-btn').onclick = () => {
+          window.open(d.subscribeUrl || 'https://t.me/moh1101off','_blank');
+        };
+      }
+    };
+  } catch (err) {
+    // fallback: تحقق عادي بدون Worker
+    fallbackCheck();
+  }
+}
 
-    window.onload = checkSubscription;
+async function fallbackCheck() {
+  // محاولة سريعة بدون worker
+  document.getElementById('overlay-check').classList.add('hidden');
+  document.getElementById('main-ui').classList.remove('hidden');
+  loadSaved();
+}
 
-    async function checkSubscription(force = false) {
-        const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
-        if (!userId) return document.body.innerHTML = "<h3>افتح من تليجرام</h3>";
+/* ======= حفظ/تحميل بسيط ======= */
+function saveConfig() {
+  localStorage.setItem(SUB_KEY, JSON.stringify(app));
+}
+function loadSaved() {
+  const raw = localStorage.getItem(SUB_KEY);
+  if (raw) {
+    try { app = JSON.parse(raw); } catch(e){}
+  }
+  // إذا كان محفوظًا أظهر الجزء المناسب
+  document.getElementById('setup-area').classList.remove('hidden');
+  renderSubList();
+}
 
-        // التحقق من الذاكرة المؤقتة أولاً لتسريع الفتح
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (!force && cached) {
-            const cacheData = JSON.parse(cached);
-            if (Date.now() - cacheData.timestamp < CACHE_TIME) {
-                startApp();
-                return;
-            }
-        }
+/* ======= عناصر الواجهة: إضافة مادة/قائمة المواد ======= */
+const subListEl = document.getElementById('sub-list');
+const subTpl = document.getElementById('sub-template');
 
-        document.getElementById('loading-screen').classList.remove('hidden');
-        try {
-            const res = await fetch(`${WORKER_URL}?userId=${userId}`);
-            const data = await res.json();
-            document.getElementById('loading-screen').classList.add('hidden');
-            
-            if (data.isMember) {
-                // حفظ حالة التحقق في الذاكرة لتسريع المرة القادمة
-                localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now() }));
-                startApp();
-            } else {
-                document.getElementById('subscription-overlay').classList.remove('hidden');
-            }
-        } catch (e) { 
-            document.getElementById('loading-screen').classList.add('hidden');
-            alert("خطأ في الاتصال، حاول لاحقاً."); 
-        }
-    }
+function renderSubList() {
+  subListEl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  app.subjects.forEach((s, idx) => {
+    const node = subTpl.content.cloneNode(true);
+    node.querySelector('.name').innerText = s.name;
+    node.querySelector('.coeff').innerText = s.coeff;
+    node.querySelector('.type').innerText = (s.type || 'EX').toUpperCase();
+    node.querySelector('.badge').innerText = (idx+1);
+    const removeBtn = node.querySelector('.remove-sub');
+    removeBtn.addEventListener('click', ()=> {
+      app.subjects.splice(idx,1);
+      saveConfig(); renderSubList();
+    });
+    frag.appendChild(node);
+  });
+  subListEl.appendChild(frag);
+}
 
-    function startApp() {
-        document.getElementById('subscription-overlay').classList.add('hidden');
-        const saved = localStorage.getItem('saved_calc_config');
-        if (saved) { appData = JSON.parse(saved); renderGrading(); }
-        else { document.getElementById('main-app').classList.remove('hidden'); }
-    }
+document.getElementById('add-sub').addEventListener('click', () => {
+  const name = document.getElementById('sub-name').value.trim();
+  const coeff = parseFloat(document.getElementById('sub-coeff').value) || 1;
+  const type = document.getElementById('sub-type').value;
+  if (!name) return alert('أدخل اسم المادة');
+  app.subjects.push({ name, coeff, type, ratio: 0.6 });
+  document.getElementById('sub-name').value = '';
+  saveConfig(); renderSubList();
+});
 
-    function toggleRatio() {
-        const type = document.getElementById('sub-type').value;
-        document.getElementById('ratio-div').classList.toggle('hidden', type === 'ex');
-    }
+document.getElementById('start-btn').addEventListener('click', () => {
+  const total = parseInt(document.getElementById('total-sub').value) || 0;
+  if (total <= 0) return alert('أدخل عدد مواد صحيح');
+  document.getElementById('setup-area').classList.remove('hidden');
+  // إذا لم يضف المستخدم مواد نملأ افتراضياً بمسميات فارغة لسرعة البدء
+  if (app.subjects.length === 0) {
+    for (let i=0;i<Math.min(total,20);i++) app.subjects.push({ name: `مادة ${i+1}`, coeff:1, type:'ex', ratio:0.6 });
+    saveConfig();
+    renderSubList();
+  }
+});
 
-    function initSetup() {
-        appData.specName = document.getElementById('specialization-name').value || "تخصص عام";
-        appData.total = parseInt(document.getElementById('total-subs').value);
-        if(!appData.total) return alert("أدخل العدد");
-        document.getElementById('step-1').classList.add('hidden');
-        document.getElementById('step-2').classList.remove('hidden');
-        updateTitle();
-    }
-
-    function updateTitle() {
-        document.getElementById('current-sub-title').innerText = `المادة (${appData.current + 1} من ${appData.total})`;
-    }
-
-    function saveSubject() {
-        const name = document.getElementById('sub-name').value;
-        const coeff = parseFloat(document.getElementById('sub-coeff').value);
-        const type = document.getElementById('sub-type').value;
-        const ratio = parseFloat(document.getElementById('sub-ratio').value);
-        if(!name || isNaN(coeff)) return alert("أكمل البيانات");
-        appData.subjects.push({ name, coeff, type, ratio });
-        appData.current++;
-        if(appData.current < appData.total) { document.getElementById('sub-name').value = ""; updateTitle(); }
-        else { localStorage.setItem('saved_calc_config', JSON.stringify(appData)); renderGrading(); }
-    }
-
-    function renderGrading() {
-        document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('step-1').classList.add('hidden');
-        document.getElementById('step-2').classList.add('hidden');
-        document.getElementById('step-4').classList.add('hidden');
-        const area = document.getElementById('grading-area'); area.innerHTML = "";
-        document.getElementById('grading-title').innerText = appData.specName;
-        appData.subjects.forEach((sub, i) => {
-            let html = `<div class="sub-card"><span class="badge-type">${sub.type.toUpperCase()}</span><strong>${sub.name} (معامل ${sub.coeff})</strong><br><br>`;
-            html += `<label>علامة EX:</label><input type="number" class="grade-ex" data-idx="${i}" step="0.01">`;
-            if(sub.type === 'both' || sub.type === 'all') html += `<label style="margin-top:8px;">علامة TD:</label><input type="number" class="grade-td" data-idx="${i}" step="0.01">`;
-            if(sub.type === 'all') html += `<label style="margin-top:8px;">علامة TP:</label><input type="number" class="grade-tp" data-idx="${i}" step="0.01">`;
-            html += `</div>`; area.innerHTML += html;
-        });
-        document.getElementById('step-3').classList.remove('hidden');
-    }
-
-    function calculateFinal() {
-        const exInputs = document.querySelectorAll('.grade-ex');
-        let totalW = 0, totalC = 0, tableH = "";
-        for(let i=0; i < appData.subjects.length; i++) {
-            let sub = appData.subjects[i], exV = parseFloat(exInputs[i].value) || 0, avg = 0;
-            if(sub.type === 'ex') avg = exV;
-            else if(sub.type === 'both') avg = (exV * sub.ratio) + ((parseFloat(document.querySelector(`.grade-td[data-idx="${i}"]`).value) || 0) * (1 - sub.ratio));
-            else if(sub.type === 'all') {
-                let combo = ((parseFloat(document.querySelector(`.grade-td[data-idx="${i}"]`).value) || 0) + (parseFloat(document.querySelector(`.grade-tp[data-idx="${i}"]`).value) || 0)) / 2;
-                avg = (exV * sub.ratio) + (combo * (1 - sub.ratio));
-            }
-            totalW += (avg * sub.coeff); totalC += sub.coeff;
-            tableH += `<tr><td>${sub.name}</td><td>${avg.toFixed(2)}</td><td>${sub.coeff}</td></tr>`;
-        }
-        document.getElementById('result-body').innerHTML = tableH;
-        document.getElementById('final-avg-display').innerText = `المعدل العام: ${(totalW / totalC).toFixed(2)}`;
-        document.getElementById('step-3').classList.add('hidden'); document.getElementById('step-4').classList.remove('hidden');
-    }
-
-    function downloadPDF() { html2pdf().from(document.getElementById('pdf-content')).set({ margin: 10, filename: 'Result.pdf' }).save(); }
-    function backToGrading() { document.getElementById('step-4').classList.add('hidden'); document.getElementById('step-3').classList.remove('hidden'); }
-    function resetApp() { if(confirm("حذف التخصص؟")) { localStorage.removeItem('saved_calc_config'); localStorage.removeItem(CACHE_KEY); location.reload(); } }
-</script>
-</body>
-    </html>
+/* ======= استيراد CSV (بسيط) ======= */
+document.getElementById('import-csv').addEventListener('click', ()=> document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    parseCSV(ev.target.result);
+    saveConfig(); renderSubList();
+  };
+  reader.readAsText(f,'utf-8');
+});
+function parseCSV(text) {
+  // يتوقع: name,coeff,type
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  app.subjects = [];
+  for (const ln of lines) {
+    const parts = ln.split(',');
+    if (parts.length>=1) {
+      const name = parts[0].trim();
+      const coeff = parseFloat(parts[1]) || 1;
+      const type = (parts[2]||'ex').trim();
+      app.subjects.push({ name, coeff, type, ratio:
