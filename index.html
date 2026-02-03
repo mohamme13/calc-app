@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>حاسبة المعدل — سريع ومحسّن</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>حاسبة المعدل — سريع</title>
   <style>
     :root{--main:#2481cc;--bg:#f6f8fb;--accent:#27ae60;--err:#e74c3c}
     body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);margin:0;padding:16px;display:flex;justify-content:center}
-    .card{width:100%;max-width:640px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    .card{width:100%;max-width:720px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
     h1{margin:0 0 12px;color:var(--main);text-align:center}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     label{font-weight:600;margin-bottom:6px;display:block}
@@ -60,13 +60,13 @@
       </div>
 
       <div id="setup-area" class="hidden" style="margin-top:12px">
-        <div class="small">اضف/حرر المواد ثم اضغط "توليد واجهة الدرجات"</div>
+        <div class="small">أضف المواد يدويًا أو استورد من CSV ثم اضغط "توليد واجهة الدرجات"</div>
         <div style="margin-top:10px" class="row">
           <input id="sub-name" placeholder="اسم المادة" style="flex:1" />
           <input id="sub-coeff" type="number" value="1" min="0.25" step="0.25" style="width:120px" />
           <select id="sub-type" style="width:200px">
             <option value="ex">امتحان (EX)</option>
-            <option value="both">EX + أعمال موجهة</option>
+            <option value="both">EX + TD</option>
             <option value="all">EX + TD + TP</option>
           </select>
           <button id="add-sub" class="btn">أضف</button>
@@ -99,7 +99,7 @@
     </div>
   </div>
 
-  <!-- template for subject (cloning faster than string concat) -->
+  <!-- templates -->
   <template id="sub-template">
     <div class="sub-card">
       <span class="badge"></span>
@@ -116,7 +116,6 @@
     </div>
   </template>
 
-  <!-- template for grade row -->
   <template id="grade-row-template">
     <div class="sub-card grade-row">
       <span class="badge type-badge"></span>
@@ -128,69 +127,127 @@
     </div>
   </template>
 
-<script>
-/* ======= إعدادات وأداء ======= */
-const WORKER_SCRIPT = 'sub-check-worker.js'; // ملف العامل (Web Worker)
-const SUB_KEY = 'fast_gpa_config_v1';
-let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-let worker;
-let app = {
-  specName: '',
-  subjects: []
-};
+  <!-- html2pdf (خيار تنزيل PDF بسرعة) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-/* ======= فحص الاشتراك عبر Web Worker ======= */
-function startWorkerCheck() {
+<script>
+/* ===== إعدادات الأداء والتحقق (inline worker + timeout + cache) ===== */
+const CHECK_URL = 'https://check-sub.nbvcxnbvcx41.workers.dev'; // عدّل إلى endpoint الذي تستخدمه
+const CACHE_KEY = 'fast_gpa_sub_v1';
+const CACHE_TTL = 2 * 60 * 60 * 1000; // ساعتان
+const WORKER_TIMEOUT = 3200; // ms
+const FALLBACK_TIMEOUT = 3500; // ms
+
+let tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+let app = { specName: '', subjects: [] };
+const STORAGE_KEY = 'fast_gpa_config_v1';
+
+/* ===== Inline worker source (بسيط وخفيف جدًا) ===== */
+const inlineWorkerSource = `
+self.onmessage = async (e) => {
+  const data = e.data || {};
+  if (data.cmd !== 'check') return self.postMessage({ ok:false, error:'unknown-cmd' });
+  const userId = data.userId;
+  const url = data.url;
+  if (!userId) return self.postMessage({ ok:false, error:'no-user' });
+
+  const fetchWithTimeout = (u, ms = 3000) => {
+    const c = new AbortController();
+    const tid = setTimeout(()=>c.abort(), ms);
+    return fetch(u, { signal: c.signal }).finally(()=>clearTimeout(tid));
+  };
+
   try {
-    worker = new Worker(WORKER_SCRIPT);
-    const userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
-    worker.postMessage({ cmd: 'check', userId });
-    worker.onmessage = e => {
-      const d = e.data;
-      if (d.ok) {
-        document.getElementById('overlay-check').classList.add('hidden');
-        document.getElementById('main-ui').classList.remove('hidden');
-        loadSaved();
-        // préparer UI
-      } else {
-        document.getElementById('check-msg').innerText = 'يرجى الاشتراك في القناة لاستخدام التطبيق';
-        // نعرض زر الاشتراك (يمكن فتح رابط)
-        document.getElementById('overlay-check').querySelector('#retry-btn').innerText = 'اشترك ثم تحقق';
-        document.getElementById('retry-btn').onclick = () => {
-          window.open(d.subscribeUrl || 'https://t.me/moh1101off','_blank');
-        };
-      }
-    };
+    const res = await fetchWithTimeout(url + '?userId=' + encodeURIComponent(userId), 3000);
+    if (!res.ok) return self.postMessage({ ok:false, error:'bad-status', status: res.status });
+    const json = await res.json();
+    self.postMessage({ ok:true, ...json });
   } catch (err) {
-    // fallback: تحقق عادي بدون Worker
-    fallbackCheck();
+    const isAbort = err && err.name === 'AbortError';
+    self.postMessage({ ok:false, error: isAbort ? 'timeout' : (err && err.message ? err.message : 'fetch-error') });
+  }
+};
+`;
+
+/* ===== إنشاء العامل inline (Blob) ===== */
+function createInlineWorker(srcText) {
+  const blob = new Blob([srcText], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  const worker = new Worker(url);
+  // revokeObjectURL بعد إنشاء العامل لتقليل التسرب المحتمل
+  URL.revokeObjectURL(url);
+  return worker;
+}
+
+/* ===== تحقق الاشتراك مع محاولات fallback وسرعة استجابة ===== */
+async function checkSubscriptionFast() {
+  // تحقق من الكاش أولاً
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.ts < CACHE_TTL) return parsed.value;
+    } catch(e){}
+  }
+
+  // userId من Telegram إذا متوفر
+  const userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
+
+  // إنشئ العامل inline
+  let worker;
+  try { worker = createInlineWorker(inlineWorkerSource); } catch(e){ worker = null; }
+
+  // انتظار رد العامل مع timeout
+  const workerPromise = new Promise((resolve) => {
+    if (!worker) return resolve(null);
+    const timer = setTimeout(() => {
+      try { worker.terminate(); } catch(e){}
+      resolve(null);
+    }, WORKER_TIMEOUT);
+    worker.onmessage = (ev) => {
+      clearTimeout(timer);
+      resolve(ev.data);
+      try { worker.terminate(); } catch(e){}
+    };
+    worker.postMessage({ cmd: 'check', userId, url: CHECK_URL });
+  });
+
+  const workerResult = await workerPromise;
+
+  if (workerResult === null) {
+    // fallback: طلب fetch مباشر مع timeout
+    try {
+      const ac = new AbortController();
+      const tid = setTimeout(()=>ac.abort(), FALLBACK_TIMEOUT);
+      const res = await fetch(`${CHECK_URL}?userId=${encodeURIComponent(userId)}`, { signal: ac.signal });
+      clearTimeout(tid);
+      if (!res.ok) throw new Error('bad-status:'+res.status);
+      const json = await res.json();
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), value: json }));
+      return json;
+    } catch (err) {
+      return { ok: false, error: err.name === 'AbortError' ? 'timeout' : (err.message || 'fetch-error') };
+    }
+  } else {
+    // خزن وارجع
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), value: workerResult })); } catch(e){}
+    return workerResult;
   }
 }
 
-async function fallbackCheck() {
-  // محاولة سريعة بدون worker
-  document.getElementById('overlay-check').classList.add('hidden');
-  document.getElementById('main-ui').classList.remove('hidden');
-  loadSaved();
-}
-
-/* ======= حفظ/تحميل بسيط ======= */
-function saveConfig() {
-  localStorage.setItem(SUB_KEY, JSON.stringify(app));
-}
-function loadSaved() {
-  const raw = localStorage.getItem(SUB_KEY);
+/* ===== واجهة المستخدم: حفظ/تحميل الإعدادات والوظائف ===== */
+function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(app)); }
+function loadConfig() {
+  const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     try { app = JSON.parse(raw); } catch(e){}
   }
-  // إذا كان محفوظًا أظهر الجزء المناسب
-  document.getElementById('setup-area').classList.remove('hidden');
-  renderSubList();
 }
 
-/* ======= عناصر الواجهة: إضافة مادة/قائمة المواد ======= */
+/* ===== عناصر وإدارة المواد ===== */
 const subListEl = document.getElementById('sub-list');
 const subTpl = document.getElementById('sub-template');
+const gradeTpl = document.getElementById('grade-row-template');
 
 function renderSubList() {
   subListEl.innerHTML = '';
@@ -199,7 +256,7 @@ function renderSubList() {
     const node = subTpl.content.cloneNode(true);
     node.querySelector('.name').innerText = s.name;
     node.querySelector('.coeff').innerText = s.coeff;
-    node.querySelector('.type').innerText = (s.type || 'EX').toUpperCase();
+    node.querySelector('.type').innerText = (s.type || 'ex').toUpperCase();
     node.querySelector('.badge').innerText = (idx+1);
     const removeBtn = node.querySelector('.remove-sub');
     removeBtn.addEventListener('click', ()=> {
@@ -225,15 +282,13 @@ document.getElementById('start-btn').addEventListener('click', () => {
   const total = parseInt(document.getElementById('total-sub').value) || 0;
   if (total <= 0) return alert('أدخل عدد مواد صحيح');
   document.getElementById('setup-area').classList.remove('hidden');
-  // إذا لم يضف المستخدم مواد نملأ افتراضياً بمسميات فارغة لسرعة البدء
-  if (app.subjects.length === 0) {
+  if (!app.subjects || app.subjects.length === 0) {
     for (let i=0;i<Math.min(total,20);i++) app.subjects.push({ name: `مادة ${i+1}`, coeff:1, type:'ex', ratio:0.6 });
-    saveConfig();
-    renderSubList();
+    saveConfig(); renderSubList();
   }
 });
 
-/* ======= استيراد CSV (بسيط) ======= */
+/* ===== استيراد CSV بسيط ===== */
 document.getElementById('import-csv').addEventListener('click', ()=> document.getElementById('file-input').click());
 document.getElementById('file-input').addEventListener('change', (e) => {
   const f = e.target.files[0]; if(!f) return;
@@ -246,7 +301,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
 });
 function parseCSV(text) {
   // يتوقع: name,coeff,type
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const lines = text.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);
   app.subjects = [];
   for (const ln of lines) {
     const parts = ln.split(',');
@@ -254,4 +309,153 @@ function parseCSV(text) {
       const name = parts[0].trim();
       const coeff = parseFloat(parts[1]) || 1;
       const type = (parts[2]||'ex').trim();
-      app.subjects.push({ name, coeff, type, ratio:
+      app.subjects.push({ name, coeff, type, ratio:0.6 });
+    }
+  }
+}
+
+/* ===== توليد واجهة الدرجات بسرعة باستخدام templates ===== */
+document.getElementById('gen-grading').addEventListener('click', () => {
+  renderGrading();
+});
+
+function renderGrading() {
+  document.getElementById('grades-container').innerHTML = '';
+  document.getElementById('spec-title').innerText = (document.getElementById('spec-name').value || app.specName || 'تخصص');
+  app.specName = document.getElementById('spec-name').value || app.specName;
+  saveConfig();
+
+  const frag = document.createDocumentFragment();
+  app.subjects.forEach((s, i) => {
+    const node = gradeTpl.content.cloneNode(true);
+    node.querySelector('.g-name').innerText = s.name;
+    node.querySelector('.g-coeff').innerText = s.coeff;
+    node.querySelector('.type-badge').innerText = (s.type || 'ex').toUpperCase();
+    const inputsDiv = node.querySelector('.inputs');
+
+    // EX input
+    const exInput = document.createElement('input');
+    exInput.type = 'number'; exInput.placeholder = 'EX'; exInput.step = '0.01';
+    exInput.style.width = '120px';
+    exInput.className = 'inp-ex';
+    inputsDiv.appendChild(exInput);
+
+    if (s.type === 'both' || s.type === 'all') {
+      const tdInput = document.createElement('input');
+      tdInput.type = 'number'; tdInput.placeholder = 'TD'; tdInput.step = '0.01'; tdInput.className = 'inp-td'; inputsDiv.appendChild(tdInput);
+    }
+    if (s.type === 'all') {
+      const tpInput = document.createElement('input');
+      tpInput.type = 'number'; tpInput.placeholder = 'TP'; tpInput.step = '0.01'; tpInput.className = 'inp-tp'; inputsDiv.appendChild(tpInput);
+    }
+
+    // تحديث عرض المعدل تلقائياً عند تغيير المدخلات (debounced خفيف)
+    const updateAvg = () => {
+      const ex = parseFloat(node.querySelector('.inp-ex').value) || 0;
+      let avg = ex;
+      if (s.type === 'both') {
+        const td = parseFloat(node.querySelector('.inp-td').value) || 0;
+        avg = ex * s.ratio + td * (1 - s.ratio);
+      } else if (s.type === 'all') {
+        const td = parseFloat(node.querySelector('.inp-td').value) || 0;
+        const tp = parseFloat(node.querySelector('.inp-tp').value) || 0;
+        const combo = (td + tp) / 2;
+        avg = ex * s.ratio + combo * (1 - s.ratio);
+      }
+      node.querySelector('.g-avg').innerText = avg.toFixed(2);
+    };
+    node.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => { updateAvg(); }));
+
+    frag.appendChild(node);
+  });
+
+  document.getElementById('grades-container').appendChild(frag);
+  document.getElementById('grading-area').classList.remove('hidden');
+  document.getElementById('table-result').classList.add('hidden');
+  document.getElementById('result').classList.add('hidden');
+}
+
+/* ===== حساب المعدل وتوليد جدول النتائج ===== */
+document.getElementById('calc-btn').addEventListener('click', () => {
+  const rows = Array.from(document.querySelectorAll('.grade-row'));
+  let totalW = 0, totalC = 0;
+  let tableHtml = `<table><thead><tr><th>المادة</th><th>المعدل</th><th>المعامل</th></tr></thead><tbody>`;
+  rows.forEach((r, idx) => {
+    const name = r.querySelector('.g-name').innerText;
+    const coeff = parseFloat(r.querySelector('.g-coeff').innerText) || 1;
+    const avg = parseFloat(r.querySelector('.g-avg').innerText) || 0;
+    totalW += avg * coeff;
+    totalC += coeff;
+    tableHtml += `<tr><td>${name}</td><td>${avg.toFixed(2)}</td><td>${coeff}</td></tr>`;
+  });
+  tableHtml += `</tbody></table>`;
+  const finalAvg = totalC>0 ? (totalW/totalC) : 0;
+  document.getElementById('result').innerText = `المعدل العام: ${finalAvg.toFixed(3)}`;
+  document.getElementById('result').classList.remove('hidden');
+  document.getElementById('table-result').innerHTML = tableHtml;
+  document.getElementById('table-result').classList.remove('hidden');
+});
+
+/* ===== تصدير CSV بسيط ===== */
+document.getElementById('export-csv').addEventListener('click', () => {
+  const rows = Array.from(document.querySelectorAll('.grade-row'));
+  const lines = rows.map(r => {
+    const name = r.querySelector('.g-name').innerText;
+    const coeff = r.querySelector('.g-coeff').innerText;
+    const avg = r.querySelector('.g-avg').innerText;
+    return `${name},${coeff},${avg}`;
+  });
+  const blob = new Blob([lines.join('\\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'grades_export.csv'; document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(url);
+});
+
+/* ===== تنزيل PDF باستخدام html2pdf ===== */
+document.getElementById('download-pdf').addEventListener('click', () => {
+  const el = document.getElementById('table-result');
+  if (!el.innerHTML.trim()) return alert('لا توجد نتائج للتصدير');
+  html2pdf().from(el).set({ margin: 10, filename: 'grades.pdf' }).save();
+});
+
+/* ===== تنظيف التخزين ===== */
+document.getElementById('clear-config').addEventListener('click', ()=> {
+  if (!confirm('مسح الإعدادات المحلية؟')) return;
+  localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(CACHE_KEY);
+  app = { specName:'', subjects:[] }; renderSubList(); location.reload();
+});
+
+/* ===== Retry/initial check handlers ===== */
+document.getElementById('retry-btn').addEventListener('click', async () => {
+  document.getElementById('check-msg').innerText = 'جارٍ إعادة التحقق...';
+  await initCheck();
+});
+
+/* ===== تهيئة عند فتح الصفحة: تحقق سريع ثم تحميل واجهة ===== */
+async function initCheck() {
+  document.getElementById('overlay-check').classList.remove('hidden');
+  document.getElementById('main-ui').classList.add('hidden');
+  const res = await checkSubscriptionFast();
+  if (res && res.isMember) {
+    document.getElementById('overlay-check').classList.add('hidden');
+    document.getElementById('main-ui').classList.remove('hidden');
+    loadConfig();
+    document.getElementById('spec-name').value = app.specName || '';
+    document.getElementById('setup-area').classList.remove('hidden');
+    renderSubList();
+  } else {
+    document.getElementById('check-msg').innerText = 'يرجى الاشتراك في القناة ثم الضغط تحقق';
+    document.getElementById('overlay-check').querySelector('#retry-btn').innerText = 'اشترك ثم تحقق';
+    document.getElementById('retry-btn').onclick = () => {
+      window.open((res && res.subscribeUrl) ? res.subscribeUrl : 'https://t.me/moh1101off', '_blank');
+    };
+  }
+}
+
+/* ===== بدء التطبيق ===== */
+initCheck();
+
+</script>
+</body>
+            </html>
