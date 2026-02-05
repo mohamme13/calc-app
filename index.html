@@ -16,6 +16,7 @@
             --card-bg: rgba(255, 255, 255, 0.9);
             --text: #333;
             --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --error: #e74c3c;
         }
 
         /* الوضع الليلي التلقائي */
@@ -109,6 +110,21 @@
 
         .hidden { display: none !important; }
 
+        /* شاشة التحميل والتحقق */
+        #loading-screen, #subscription-overlay { 
+            position: fixed; top:0; left:0; width: 100%; height: 100%; 
+            background: var(--bg); z-index: 9999; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            text-align: center; padding: 25px; box-sizing: border-box; 
+        }
+
+        .loader { 
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); 
+            border-radius: 50%; width: 40px; height: 40px; 
+            animation: spin 1s linear infinite; margin-bottom: 15px; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         .result-circle {
             width: 120px; height: 120px;
             border: 6px solid var(--primary);
@@ -123,14 +139,19 @@
 </head>
 <body>
 
+<div id="loading-screen">
+    <div class="loader"></div>
+    <p>جارٍ التحقق من الاشتراك...</p>
+</div>
+
 <div id="subscription-overlay" class="hidden">
-    <i class="fas fa-paper-plane" style="font-size: 50px; color: var(--primary); margin-bottom: 20px;"></i>
-    <h2>أهلاً بك!</h2>
-    <p>للحصول على تجربة كاملة وحفظ بياناتك، انضم لقناتنا الرسمية.</p>
+    <i class="fas fa-paper-plane" style="font-size: 50px; color: var(--error); margin-bottom: 20px;"></i>
+    <h2 style="color: var(--error);">⚠️ انضمام إلزامي</h2>
+    <p>لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضواً في قناة المطور أولاً.</p>
     <button class="btn" onclick="window.open('https://t.me/moh1101off', '_blank')">
-        <i class="fab fa-telegram"></i> انضم للقناة @moh1101off
+        <i class="fab fa-telegram"></i> اضغط للاشتراك @moh1101off
     </button>
-    <button class="btn" style="background: #333;" onclick="confirmSubscription()">دخول للتطبيق <i class="fas fa-chevron-left"></i></button>
+    <button class="btn" style="background: #333;" onclick="checkSubscription()">لقد اشتركت، تحقق الآن ✅</button>
 </div>
 
 <div class="container hidden" id="main-app">
@@ -201,28 +222,51 @@
 <script>
     let tg = window.Telegram.WebApp;
     tg.expand();
+    
+    // الرابط الخاص بك من Cloudflare (الذي يعمل بشكل رائع)
+    const WORKER_URL = "https://check-sub.nbvcxnbvcx41.workers.dev";
     let appData = { specName: "", total: 0, current: 0, subjects: [], finalResult: "" };
 
-    window.onload = function() {
-        if (!localStorage.getItem('has_visited_before')) {
-            document.getElementById('subscription-overlay').classList.remove('hidden');
-        } else {
-            startApp();
-        }
-    };
+    window.onload = checkSubscription;
 
-    function confirmSubscription() {
-        localStorage.setItem('has_visited_before', 'true');
+    // دالة التحقق من الاشتراك (نفس منطق نسخة الووركر الناجحة)
+    async function checkSubscription() {
+        const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+        if (!userId) {
+            document.body.innerHTML = "<h3>يرجى فتح التطبيق من تليجرام</h3>";
+            return;
+        }
+
+        document.getElementById('loading-screen').classList.remove('hidden');
         document.getElementById('subscription-overlay').classList.add('hidden');
-        startApp();
+
+        try {
+            const response = await fetch(`${WORKER_URL}?userId=${userId}`);
+            const data = await response.json();
+
+            if (data.isMember) {
+                document.getElementById('loading-screen').classList.add('hidden');
+                startApp();
+            } else {
+                document.getElementById('loading-screen').classList.add('hidden');
+                document.getElementById('subscription-overlay').classList.remove('hidden');
+            }
+        } catch (e) {
+            alert("خطأ في الاتصال بالووركر، يرجى المحاولة لاحقاً.");
+        }
     }
 
     function startApp() {
         const saved = localStorage.getItem('saved_calc_config');
-        if (saved) { appData = JSON.parse(saved); renderGrading(); }
-        else { document.getElementById('main-app').classList.remove('hidden'); }
+        if (saved) {
+            appData = JSON.parse(saved);
+            renderGrading();
+        } else {
+            document.getElementById('main-app').classList.remove('hidden');
+        }
     }
 
+    // المنطق البرمجي المطور
     function toggleRatio() {
         const type = document.getElementById('sub-type').value;
         document.getElementById('ratio-div').classList.toggle('hidden', type === 'ex');
@@ -288,7 +332,7 @@
         }
 
         const finalResult = (totalW / totalC).toFixed(2);
-        shareText += `━━━━━━━━━━━━━━\n✅ **المعدل العام النهائي: ${finalResult}**\n\nحُسب بواسطة بوت @moh1101off`;
+        shareText += `━━━━━━━━━━━━━━\n✅ **المعدل العام النهائي: ${finalResult}**\n\nحُسب بواسطة بوت @university213_bot`;
         appData.shareText = shareText;
 
         document.getElementById('result-body').innerHTML = tableH;
