@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>حاسبة المعدل الأكاديمية</title>
+    <title id="page-title">حاسبة المعدل الأكاديمية</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -19,7 +19,6 @@
             --error: #e74c3c;
         }
 
-        /* الوضع الليلي التلقائي */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #121212;
@@ -36,8 +35,38 @@
             margin: 0;
             padding: 15px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             transition: all 0.3s ease;
+        }
+
+        /* تنسيق زر اللغة */
+        .lang-switcher {
+            align-self: flex-start;
+            margin-bottom: 15px;
+            background: var(--card-bg);
+            padding: 5px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: 5px;
+        }
+
+        .lang-btn {
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-family: 'Cairo';
+            font-size: 12px;
+            color: var(--text);
+            transition: 0.3s;
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
         }
 
         .container {
@@ -50,10 +79,10 @@
             padding: 25px;
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box;
         }
 
         h2 { text-align: center; color: var(--primary); margin-bottom: 25px; }
-
         .input-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
         
@@ -110,7 +139,6 @@
 
         .hidden { display: none !important; }
 
-        /* شاشة التحميل والتحقق */
         #loading-screen, #subscription-overlay { 
             position: fixed; top:0; left:0; width: 100%; height: 100%; 
             background: var(--bg); z-index: 9999; 
@@ -118,104 +146,101 @@
             text-align: center; padding: 25px; box-sizing: border-box; 
         }
 
-        .loader { 
-            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); 
-            border-radius: 50%; width: 40px; height: 40px; 
-            animation: spin 1s linear infinite; margin-bottom: 15px; 
-        }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .result-circle {
-            width: 120px; height: 120px;
-            border: 6px solid var(--primary);
-            border-radius: 50%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin: 20px auto; font-weight: bold;
-        }
-
+        .result-circle { width: 120px; height: 120px; border: 6px solid var(--primary); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 20px auto; font-weight: bold; }
         .result-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         .result-table td { padding: 12px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
+<div class="lang-switcher">
+    <button class="lang-btn active" id="btn-ar" onclick="setLanguage('ar')">العربية</button>
+    <button class="lang-btn" id="btn-en" onclick="setLanguage('en')">English</button>
+    <button class="lang-btn" id="btn-fr" onclick="setLanguage('fr')">Français</button>
+</div>
+
 <div id="loading-screen">
     <div class="loader"></div>
-    <p>جارٍ التحقق من الاشتراك...</p>
+    <p id="loading-text">جارٍ التحقق من الاشتراك...</p>
 </div>
 
 <div id="subscription-overlay" class="hidden">
     <i class="fas fa-paper-plane" style="font-size: 50px; color: var(--error); margin-bottom: 20px;"></i>
-    <h2 style="color: var(--error);">⚠️ انضمام إلزامي</h2>
-    <p>لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضواً في قناة المطور أولاً.</p>
+    <h2 id="sub-title" style="color: var(--error);">⚠️ انضمام إلزامي</h2>
+    <p id="sub-desc">لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضواً في قناة المطور أولاً.</p>
     <button class="btn" onclick="window.open('https://t.me/moh1101off', '_blank')">
-        <i class="fab fa-telegram"></i> اضغط للاشتراك @moh1101off
+        <i class="fab fa-telegram"></i> <span id="sub-btn-text">اضغط للاشتراك @moh1101off</span>
     </button>
-    <button class="btn" style="background: #333;" onclick="checkSubscription()">لقد اشتركت، تحقق الآن ✅</button>
+    <button class="btn" style="background: #333;" onclick="checkSubscription()">
+        <span id="sub-verify-text">لقد اشتركت، تحقق الآن ✅</span>
+    </button>
 </div>
 
 <div class="container hidden" id="main-app">
     <div id="step-1">
-        <h2><i class="fas fa-graduation-cap"></i> إعداد التخصص</h2>
+        <h2><i class="fas fa-graduation-cap"></i> <span id="label-setup">إعداد التخصص</span></h2>
         <div class="input-group">
-            <label>اسم التخصص:</label>
-            <input type="text" id="specialization-name" placeholder="مثلاً: علوم المادة">
+            <label id="label-spec-name">اسم التخصص:</label>
+            <input type="text" id="specialization-name" placeholder="...">
         </div>
         <div class="input-group">
-            <label>عدد المواد:</label>
+            <label id="label-total-subs">عدد المواد:</label>
             <input type="number" id="total-subs">
         </div>
-        <button class="btn" onclick="initSetup()">متابعة <i class="fas fa-arrow-left"></i></button>
+        <button class="btn" onclick="initSetup()"><span id="btn-continue">متابعة</span> <i class="fas fa-arrow-left"></i></button>
     </div>
 
     <div id="step-2" class="hidden">
         <h2 id="current-sub-title">المادة</h2>
         <div class="input-group">
-            <label>اسم المادة:</label>
+            <label id="label-sub-name">اسم المادة:</label>
             <input type="text" id="sub-name">
         </div>
         <div class="input-group">
-            <label>المعامل:</label>
+            <label id="label-sub-coeff">المعامل:</label>
             <input type="number" id="sub-coeff" value="1">
         </div>
         <div class="input-group">
-            <label>نظام التقييم:</label>
+            <label id="label-sub-system">نظام التقييم:</label>
             <select id="sub-type" onchange="toggleRatio()">
-                <option value="ex">إمتحان فقط (EX)</option>
-                <option value="both">إمتحان + أعمال موجهة (EX+TD)</option>
-                <option value="all">إمتحان + موجهة + تطبيقية (EX+TD+TP)</option>
+                <option value="ex" id="opt-ex">إمتحان فقط (EX)</option>
+                <option value="both" id="opt-both">إمتحان + أعمال موجهة (EX+TD)</option>
+                <option value="all" id="opt-all">إمتحان + موجهة + تطبيقية (EX+TD+TP)</option>
             </select>
         </div>
         <div id="ratio-div" class="hidden">
-            <label>نسبة الإمتحان (EX):</label>
+            <label id="label-sub-ratio">نسبة الإمتحان (EX):</label>
             <input type="number" id="sub-ratio" value="0.6" step="0.1">
         </div>
-        <button class="btn" onclick="saveSubject()">المادة التالية <i class="fas fa-plus"></i></button>
+        <button class="btn" onclick="saveSubject()"><span id="btn-next-sub">المادة التالية</span> <i class="fas fa-plus"></i></button>
     </div>
 
     <div id="step-3" class="hidden">
         <h2 id="grading-title">رصد الدرجات</h2>
         <div id="grading-area"></div>
-        <button class="btn" onclick="calculateFinal()">حساب المعدل <i class="fas fa-calculator"></i></button>
-        <button class="btn" style="background:#7f8c8d; font-size:12px;" onclick="resetApp()"><i class="fas fa-sync"></i> تغيير التخصص</button>
+        <button class="btn" onclick="calculateFinal()"><span id="btn-calc">حساب المعدل</span> <i class="fas fa-calculator"></i></button>
+        <button class="btn" style="background:#7f8c8d; font-size:12px;" onclick="resetApp()"><i class="fas fa-sync"></i> <span id="btn-change-spec">تغيير التخصص</span></button>
     </div>
 
     <div id="step-4" class="hidden">
-        <h2><i class="fas fa-chart-line"></i> النتيجة النهائية</h2>
+        <h2 id="label-final-result"><i class="fas fa-chart-line"></i> النتيجة النهائية</h2>
         <div class="result-circle">
             <span id="final-avg-val" style="font-size: 24px;">0.00</span>
-            <span style="font-size: 12px;">المعدل العام</span>
+            <span id="label-avg-text" style="font-size: 12px;">المعدل العام</span>
         </div>
         <table class="result-table">
             <tbody id="result-body"></tbody>
         </table>
         
         <button class="btn btn-share" onclick="shareResult()">
-            <i class="fas fa-share-alt"></i> مشاركة النتيجة مع الأصدقاء
+            <i class="fas fa-share-alt"></i> <span id="btn-share-text">مشاركة النتيجة</span>
         </button>
         
-        <button class="btn" style="background:#95a5a6;" onclick="backToGrading()">تعديل الدرجات <i class="fas fa-edit"></i></button>
-        <button class="btn" onclick="location.reload()">بداية جديدة <i class="fas fa-redo"></i></button>
+        <button class="btn" style="background:#95a5a6;" onclick="backToGrading()"><span id="btn-edit-grades">تعديل الدرجات</span> <i class="fas fa-edit"></i></button>
+        <button class="btn" onclick="location.reload()"><span id="btn-new-start">بداية جديدة</span> <i class="fas fa-redo"></i></button>
     </div>
 </div>
 
@@ -223,27 +248,88 @@
     let tg = window.Telegram.WebApp;
     tg.expand();
     
-    // الرابط الخاص بك من Cloudflare (الذي يعمل بشكل رائع)
     const WORKER_URL = "https://check-sub.nbvcxnbvcx41.workers.dev";
     let appData = { specName: "", total: 0, current: 0, subjects: [], finalResult: "" };
+    
+    // كائن اللغات
+    const translations = {
+        ar: {
+            dir: "rtl", loading: "جارٍ التحقق من الاشتراك...", sub_title: "⚠️ انضمام إلزامي", sub_desc: "لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضواً في قناة المطور أولاً.", sub_btn: "اضغط للاشتراك @moh1101off", sub_verify: "لقد اشتركت، تحقق الآن ✅",
+            setup: "إعداد التخصص", spec_name: "اسم التخصص:", total_subs: "عدد المواد:", continue: "متابعة", subject: "المادة", sub_label: "اسم المادة:", coeff: "المعامل:", system: "نظام التقييم:", ex: "إمتحان فقط (EX)", both: "إمتحان + أعمال موجهة (EX+TD)", all: "إمتحان + موجهة + تطبيقية (EX+TD+TP)", ratio: "نسبة الإمتحان (EX):", next: "المادة التالية", grading: "رصد الدرجات", calc: "حساب المعدل", change: "تغيير التخصص", final: "النتيجة النهائية", avg: "المعدل العام", share: "مشاركة النتيجة", edit: "تعديل الدرجات", restart: "بداية جديدة", alert_fill: "أكمل البيانات", alert_reset: "حذف التخصص؟", share_msg: "📊 كشف نقاطي في"
+        },
+        en: {
+            dir: "ltr", loading: "Checking subscription...", sub_title: "⚠️ Mandatory Join", sub_desc: "To use the calculator and save data, you must join the developer's channel first.", sub_btn: "Click to join @moh1101off", sub_verify: "I joined, verify now ✅",
+            setup: "Specialization Setup", spec_name: "Specialization Name:", total_subs: "Number of Subjects:", continue: "Continue", subject: "Subject", sub_label: "Subject Name:", coeff: "Coefficient:", system: "Grading System:", ex: "Exam only (EX)", both: "Exam + TD", all: "Exam + TD + TP", ratio: "Exam Ratio (EX):", next: "Next Subject", grading: "Enter Grades", calc: "Calculate GPA", change: "Change Specialization", final: "Final Result", avg: "GPA", share: "Share Result", edit: "Edit Grades", restart: "New Start", alert_fill: "Please fill all data", alert_reset: "Delete specialization?", share_msg: "📊 My Transcript in"
+        },
+        fr: {
+            dir: "ltr", loading: "Vérification de l'abonnement...", sub_title: "⚠️ Adhésion Obligatoire", sub_desc: "Pour utiliser la calculatrice, vous devez d'abord rejoindre la chaîne du développeur.", sub_btn: "Cliquez pour rejoindre @moh1101off", sub_verify: "J'ai rejoint, vérifier ✅",
+            setup: "Configuration de Spécialité", spec_name: "Nom de Spécialité:", total_subs: "Nombre de Matières:", continue: "Continuer", subject: "Matière", sub_label: "Nom de Matière:", coeff: "Coefficient:", system: "Système d'évaluation:", ex: "Examen seulement (EX)", both: "Examen + TD", all: "Examen + TD + TP", ratio: "Ratio Examen (EX):", next: "Matière Suivante", grading: "Saisie des Notes", calc: "Calculer la Moyenne", change: "Changer Spécialité", final: "Résultat Final", avg: "Moyenne", share: "Partager", edit: "Modifier Notes", restart: "Nouveau Départ", alert_fill: "Veuillez remplir les données", alert_reset: "Supprimer la spécialité?", share_msg: "📊 Mon Relevé en"
+        }
+    };
 
-    window.onload = checkSubscription;
+    let currentLang = localStorage.getItem('app_lang') || 'ar';
 
-    // دالة التحقق من الاشتراك (نفس منطق نسخة الووركر الناجحة)
+    window.onload = function() {
+        setLanguage(currentLang);
+        checkSubscription();
+    };
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('app_lang', lang);
+        const t = translations[lang];
+        
+        // تغيير الاتجاه واللغة
+        document.documentElement.lang = lang;
+        document.documentElement.dir = t.dir;
+        document.body.style.direction = t.dir;
+        document.body.style.fontFamily = (lang === 'ar') ? "'Cairo', sans-serif" : "sans-serif";
+
+        // تحديث الأزرار النشطة
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-${lang}`).classList.add('active');
+
+        // تحديث النصوص في الواجهة
+        document.getElementById('loading-text').innerText = t.loading;
+        document.getElementById('sub-title').innerText = t.sub_title;
+        document.getElementById('sub-desc').innerText = t.sub_desc;
+        document.getElementById('sub-btn-text').innerText = t.sub_btn;
+        document.getElementById('sub-verify-text').innerText = t.sub_verify;
+        document.getElementById('label-setup').innerText = t.setup;
+        document.getElementById('label-spec-name').innerText = t.spec_name;
+        document.getElementById('label-total-subs').innerText = t.total_subs;
+        document.getElementById('btn-continue').innerText = t.continue;
+        document.getElementById('label-sub-name').innerText = t.sub_label;
+        document.getElementById('label-sub-coeff').innerText = t.coeff;
+        document.getElementById('label-sub-system').innerText = t.system;
+        document.getElementById('opt-ex').innerText = t.ex;
+        document.getElementById('opt-both').innerText = t.both;
+        document.getElementById('opt-all').innerText = t.all;
+        document.getElementById('label-sub-ratio').innerText = t.ratio;
+        document.getElementById('btn-next-sub').innerText = t.next;
+        document.getElementById('btn-calc').innerText = t.calc;
+        document.getElementById('btn-change-spec').innerText = t.change;
+        document.getElementById('label-final-result').innerText = t.final;
+        document.getElementById('label-avg-text').innerText = t.avg;
+        document.getElementById('btn-share-text').innerText = t.share;
+        document.getElementById('btn-edit-grades').innerText = t.edit;
+        document.getElementById('btn-new-start').innerText = t.restart;
+
+        if (appData.subjects.length > 0) updateTitle();
+    }
+
+    // دالة التحقق من الاشتراك (بدون مساس بالووركر)
     async function checkSubscription() {
         const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
         if (!userId) {
-            document.body.innerHTML = "<h3>يرجى فتح التطبيق من تليجرام</h3>";
+            document.body.innerHTML = "<h3>Please open from Telegram</h3>";
             return;
         }
-
         document.getElementById('loading-screen').classList.remove('hidden');
         document.getElementById('subscription-overlay').classList.add('hidden');
-
         try {
             const response = await fetch(`${WORKER_URL}?userId=${userId}`);
             const data = await response.json();
-
             if (data.isMember) {
                 document.getElementById('loading-screen').classList.add('hidden');
                 startApp();
@@ -251,38 +337,32 @@
                 document.getElementById('loading-screen').classList.add('hidden');
                 document.getElementById('subscription-overlay').classList.remove('hidden');
             }
-        } catch (e) {
-            alert("خطأ في الاتصال بالووركر، يرجى المحاولة لاحقاً.");
-        }
+        } catch (e) { alert("Connection Error with Worker."); }
     }
 
     function startApp() {
         const saved = localStorage.getItem('saved_calc_config');
-        if (saved) {
-            appData = JSON.parse(saved);
-            renderGrading();
-        } else {
-            document.getElementById('main-app').classList.remove('hidden');
-        }
+        if (saved) { appData = JSON.parse(saved); renderGrading(); }
+        else { document.getElementById('main-app').classList.remove('hidden'); }
     }
 
-    // المنطق البرمجي المطور
     function toggleRatio() {
         const type = document.getElementById('sub-type').value;
         document.getElementById('ratio-div').classList.toggle('hidden', type === 'ex');
     }
 
     function initSetup() {
-        appData.specName = document.getElementById('specialization-name').value || "تخصص عام";
+        appData.specName = document.getElementById('specialization-name').value || "Specialization";
         appData.total = parseInt(document.getElementById('total-subs').value);
-        if(!appData.total) return alert("أدخل عدد المواد");
+        if(!appData.total) return alert(translations[currentLang].alert_fill);
         document.getElementById('step-1').classList.add('hidden');
         document.getElementById('step-2').classList.remove('hidden');
         updateTitle();
     }
 
     function updateTitle() {
-        document.getElementById('current-sub-title').innerText = `المادة (${appData.current + 1} من ${appData.total})`;
+        const t = translations[currentLang];
+        document.getElementById('current-sub-title').innerText = `${t.subject} (${appData.current + 1} / ${appData.total})`;
     }
 
     function saveSubject() {
@@ -290,7 +370,7 @@
         const coeff = parseFloat(document.getElementById('sub-coeff').value);
         const type = document.getElementById('sub-type').value;
         const ratio = parseFloat(document.getElementById('sub-ratio').value);
-        if(!name || isNaN(coeff)) return alert("أكمل البيانات");
+        if(!name || isNaN(coeff)) return alert(translations[currentLang].alert_fill);
         appData.subjects.push({ name, coeff, type, ratio });
         appData.current++;
         if(appData.current < appData.total) { document.getElementById('sub-name').value = ""; updateTitle(); }
@@ -298,6 +378,7 @@
     }
 
     function renderGrading() {
+        const t = translations[currentLang];
         document.getElementById('main-app').classList.remove('hidden');
         document.getElementById('step-1').classList.add('hidden');
         document.getElementById('step-2').classList.add('hidden');
@@ -306,9 +387,9 @@
         document.getElementById('grading-title').innerText = appData.specName;
         appData.subjects.forEach((sub, i) => {
             let html = `<div class="sub-card"><span class="badge-type">${sub.type.toUpperCase()}</span><strong>${sub.name}</strong><br><br>`;
-            html += `<label>علامة EX:</label><input type="number" class="grade-ex" data-idx="${i}" step="0.01">`;
-            if(sub.type === 'both' || sub.type === 'all') html += `<label style="margin-top:8px;">علامة TD:</label><input type="number" class="grade-td" data-idx="${i}" step="0.01">`;
-            if(sub.type === 'all') html += `<label style="margin-top:8px;">علامة TP:</label><input type="number" class="grade-tp" data-idx="${i}" step="0.01">`;
+            html += `<label>EX:</label><input type="number" class="grade-ex" data-idx="${i}" step="0.01">`;
+            if(sub.type === 'both' || sub.type === 'all') html += `<label style="margin-top:8px;">TD:</label><input type="number" class="grade-td" data-idx="${i}" step="0.01">`;
+            if(sub.type === 'all') html += `<label style="margin-top:8px;">TP:</label><input type="number" class="grade-tp" data-idx="${i}" step="0.01">`;
             html += `</div>`; area.innerHTML += html;
         });
         document.getElementById('step-3').classList.remove('hidden');
@@ -316,8 +397,8 @@
 
     function calculateFinal() {
         const exInputs = document.querySelectorAll('.grade-ex');
-        let totalW = 0, totalC = 0, tableH = "", shareText = `📊 **كشف نقاطي في ${appData.specName}:**\n━━━━━━━━━━━━━━\n`;
-
+        const t = translations[currentLang];
+        let totalW = 0, totalC = 0, tableH = "", shareText = `📊 **${t.share_msg} ${appData.specName}:**\n━━━━━━━━━━━━━━\n`;
         for(let i=0; i < appData.subjects.length; i++) {
             let sub = appData.subjects[i], exV = parseFloat(exInputs[i].value) || 0, avg = 0;
             if(sub.type === 'ex') avg = exV;
@@ -330,11 +411,9 @@
             tableH += `<tr><td>${sub.name}</td><td>${avg.toFixed(2)}</td><td>${sub.coeff}</td></tr>`;
             shareText += `🔹 ${sub.name}: ${avg.toFixed(2)}\n`;
         }
-
         const finalResult = (totalW / totalC).toFixed(2);
-        shareText += `━━━━━━━━━━━━━━\n✅ **المعدل العام النهائي: ${finalResult}**\n\nحُسب بواسطة بوت @university213_bot`;
+        shareText += `━━━━━━━━━━━━━━\n✅ **${t.avg}: ${finalResult}**\n\n@university213_bot`;
         appData.shareText = shareText;
-
         document.getElementById('result-body').innerHTML = tableH;
         document.getElementById('final-avg-val').innerText = finalResult;
         document.getElementById('step-3').classList.add('hidden'); document.getElementById('step-4').classList.remove('hidden');
@@ -346,7 +425,7 @@
     }
 
     function backToGrading() { document.getElementById('step-4').classList.add('hidden'); document.getElementById('step-3').classList.remove('hidden'); }
-    function resetApp() { if(confirm("حذف التخصص؟")) { localStorage.removeItem('saved_calc_config'); location.reload(); } }
+    function resetApp() { if(confirm(translations[currentLang].alert_reset)) { localStorage.removeItem('saved_calc_config'); location.reload(); } }
 </script>
 </body>
-    </html>
+</html>
