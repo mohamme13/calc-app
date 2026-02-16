@@ -40,7 +40,6 @@
             transition: all 0.3s ease;
         }
 
-        /* تنسيق زر اللغة */
         .lang-switcher {
             align-self: flex-start;
             margin-bottom: 15px;
@@ -164,13 +163,13 @@
 
 <div id="loading-screen">
     <div class="loader"></div>
-    <p id="loading-text">جارٍ التحقق من الاشتراك...</p>
+    <p id="loading-text">جار التحقق...</p>
 </div>
 
 <div id="subscription-overlay" class="hidden">
     <i class="fas fa-paper-plane" style="font-size: 50px; color: var(--error); margin-bottom: 20px;"></i>
     <h2 id="sub-title" style="color: var(--error);">⚠️ انضمام إلزامي</h2>
-    <p id="sub-desc">لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضواً في قناة المطور أولاً.</p>
+    <p id="sub-desc">لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضوا في قناة المطور أولا.</p>
     <button class="btn" onclick="window.open('https://t.me/moh1101off', '_blank')">
         <i class="fab fa-telegram"></i> <span id="sub-btn-text">اضغط للاشتراك @moh1101off</span>
     </button>
@@ -251,18 +250,17 @@
     const WORKER_URL = "https://check-sub.nbvcxnbvcx41.workers.dev";
     let appData = { specName: "", total: 0, current: 0, subjects: [], finalResult: "" };
     
-    // كائن اللغات
     const translations = {
         ar: {
-            dir: "rtl", loading: "جارٍ التحقق من الاشتراك...", sub_title: "⚠️ انضمام إلزامي", sub_desc: "لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضواً في قناة المطور أولاً.", sub_btn: "اضغط للاشتراك @moh1101off", sub_verify: "لقد اشتركت، تحقق الآن ✅",
+            dir: "rtl", loading: "جار التحقق...", sub_title: "⚠️ انضمام إلزامي", sub_desc: "لاستخدام الحاسبة وحفظ بياناتك، يجب أن تكون عضوا في قناة المطور أولا.", sub_btn: "اضغط للاشتراك @moh1101off", sub_verify: "لقد اشتركت، تحقق الآن ✅",
             setup: "إعداد التخصص", spec_name: "اسم التخصص:", total_subs: "عدد المواد:", continue: "متابعة", subject: "المادة", sub_label: "اسم المادة:", coeff: "المعامل:", system: "نظام التقييم:", ex: "إمتحان فقط (EX)", both: "إمتحان + أعمال موجهة (EX+TD)", all: "إمتحان + موجهة + تطبيقية (EX+TD+TP)", ratio: "نسبة الإمتحان (EX):", next: "المادة التالية", grading: "رصد الدرجات", calc: "حساب المعدل", change: "تغيير التخصص", final: "النتيجة النهائية", avg: "المعدل العام", share: "مشاركة النتيجة", edit: "تعديل الدرجات", restart: "بداية جديدة", alert_fill: "أكمل البيانات", alert_reset: "حذف التخصص؟", share_msg: "📊 كشف نقاطي في"
         },
         en: {
-            dir: "rtl", loading: "Checking subscription...", sub_title: "⚠️ Mandatory Join", sub_desc: "To use the calculator and save data, you must join the developer's channel first.", sub_btn: "Click to join @moh1101off", sub_verify: "I joined, verify now ✅",
+            dir: "rtl", loading: "Checking in progress...", sub_title: "⚠️ Mandatory Join", sub_desc: "To use the calculator and save data, you must join the developer's channel first.", sub_btn: "Click to join @moh1101off", sub_verify: "I joined, verify now ✅",
             setup: "Specialization Setup", spec_name: "Specialization Name:", total_subs: "Number of Subjects:", continue: "Continue", subject: "Subject", sub_label: "Subject Name:", coeff: "Coefficient:", system: "Grading System:", ex: "Exam only (EX)", both: "Exam + TD", all: "Exam + TD + TP", ratio: "Exam Ratio (EX):", next: "Next Subject", grading: "Enter Grades", calc: "Calculate GPA", change: "Change Specialization", final: "Final Result", avg: "GPA", share: "Share Result", edit: "Edit Grades", restart: "New Start", alert_fill: "Please fill all data", alert_reset: "Delete specialization?", share_msg: "📊 My Transcript in"
         },
         fr: {
-            dir: "rtl", loading: "Vérification de l'abonnement...", sub_title: "⚠️ Adhésion Obligatoire", sub_desc: "Pour utiliser la calculatrice, vous devez d'abord rejoindre la chaîne du développeur.", sub_btn: "Cliquez pour rejoindre @moh1101off", sub_verify: "J'ai rejoint, vérifier ✅",
+            dir: "rtl", loading: "Vérification en cours...", sub_title: "⚠️ Adhésion Obligatoire", sub_desc: "Pour utiliser la calculatrice, vous devez d'abord rejoindre la chaîne du développeur.", sub_btn: "Cliquez pour rejoindre @moh1101off", sub_verify: "J'ai rejoint, vérifier ✅",
             setup: "Configuration de Spécialité", spec_name: "Nom de Spécialité:", total_subs: "Nombre de Matières:", continue: "Continuer", subject: "Matière", sub_label: "Nom de Matière:", coeff: "Coefficient:", system: "Système d'évaluation:", ex: "Examen seulement (EX)", both: "Examen + TD", all: "Examen + TD + TP", ratio: "Ratio Examen (EX):", next: "Matière Suivante", grading: "Saisie des Notes", calc: "Calculer la Moyenne", change: "Changer Spécialité", final: "Résultat Final", avg: "Moyenne", share: "Partager", edit: "Modifier Notes", restart: "Nouveau Départ", alert_fill: "Veuillez remplir les données", alert_reset: "Supprimer la spécialité?", share_msg: "📊 Mon Relevé en"
         }
     };
@@ -279,17 +277,14 @@
         localStorage.setItem('app_lang', lang);
         const t = translations[lang];
         
-        // تغيير الاتجاه واللغة
         document.documentElement.lang = lang;
         document.documentElement.dir = t.dir;
         document.body.style.direction = t.dir;
         document.body.style.fontFamily = (lang === 'ar') ? "'Cairo', sans-serif" : "sans-serif";
 
-        // تحديث الأزرار النشطة
         document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`btn-${lang}`).classList.add('active');
 
-        // تحديث النصوص في الواجهة
         document.getElementById('loading-text').innerText = t.loading;
         document.getElementById('sub-title').innerText = t.sub_title;
         document.getElementById('sub-desc').innerText = t.sub_desc;
@@ -318,7 +313,6 @@
         if (appData.subjects.length > 0) updateTitle();
     }
 
-    // دالة التحقق من الاشتراك (بدون مساس بالووركر)
     async function checkSubscription() {
         const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
         if (!userId) {
