@@ -294,7 +294,6 @@
         document.getElementById('label-spec-name').innerText = t.spec_name;
         document.getElementById('label-total-subs').innerText = t.total_subs;
         document.getElementById('btn-continue').innerText = t.continue;
-        document.getElementById('current-sub-title').innerText = t.subject;
         document.getElementById('label-sub-name').innerText = t.sub_label;
         document.getElementById('label-sub-coeff').innerText = t.coeff;
         document.getElementById('label-sub-system').innerText = t.system;
@@ -357,7 +356,7 @@
 
     function updateTitle() {
         const t = translations[currentLang];
-        document.getElementById('current-sub-title').innerText = `${t.subject} (${appData.current + 1} / ${appData.total})`;
+        document.getElementById('current-sub-title').innerText = `${t.subject} (${appData.current} / ${appData.total})`;
     }
 
     function saveSubject() {
