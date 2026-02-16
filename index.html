@@ -356,7 +356,7 @@
 
     function updateTitle() {
         const t = translations[currentLang];
-        document.getElementById('current-sub-title').innerText = `${t.subject} (${appData.current} / ${appData.total})`;
+        document.getElementById('current-sub-title').innerText = `${t.subject} (${appData.current + 1} / ${appData.total})`;
     }
 
     function saveSubject() {
